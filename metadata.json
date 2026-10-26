@@ -1,0 +1,6 @@
+{
+  "name": "Viper Td Logger",
+  "description": "Discretionary futures trading journal & rule analytics for MNQ and MES trend-pullback traders using TradingView Arsenal indicators.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
