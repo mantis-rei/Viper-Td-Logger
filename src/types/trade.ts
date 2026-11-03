@@ -2,7 +2,10 @@ export type Instrument = 'MNQ' | 'MES';
 export type Direction = 'Long' | 'Short';
 export type Regime = 'TREND' | 'RANGE';
 export type MarketBias = 'BULL' | 'BEAR' | 'FLAT';
-export type ScenarioId = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'Other';
+export type ScenarioId =
+  | 'SETUP_1_VELOCITY'
+  | 'SETUP_2_DEEP_RETEST'
+  | 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'Other';
 export type TradeGrade = 'A' | 'B' | 'C';
 export type TradeStatus = 'OPEN' | 'CLOSED';
 export type TradeOutcome = 'WIN' | 'LOSS' | 'BE';
@@ -27,56 +30,116 @@ export interface GateInfo {
   hint: string;
 }
 
-export const GATES_CONFIG: GateInfo[] = [
+export const SETUP_1_GATES: GateInfo[] = [
   {
     id: 'permission',
     number: 1,
-    name: 'Permission',
-    shortDesc: 'Ribbon aligned, ADX ≥ 20, correct VWAP side',
-    fullDesc: 'Ribbon (EMA 8/21/55) aligned with direction, ADX at or above 20, and price on the correct side of VWAP.',
-    hint: 'Ensures higher-timeframe momentum and institutional trend filter.'
+    name: 'Trend Strength > 24',
+    shortDesc: 'Trend > 24 & Directional alignment',
+    fullDesc: 'Trend strength / ADX is strictly above 24 on both NQ and ES, confirming sustained institutional order flow.',
+    hint: 'Never trade when Trend is ≤ 24 (flat chop / whipsaw risk).'
   },
   {
     id: 'location',
     number: 2,
-    name: 'Location',
-    shortDesc: 'Price is AT the zone, not beyond',
-    fullDesc: 'Price is tested right AT the zone (EMA21, VWAP, or key level), not already drifted or extended past it.',
-    hint: 'Prevents entering late or chasing away from value.'
+    name: 'Location: Above 1st Band',
+    shortDesc: 'Price trading above 1st Band (or below for Short)',
+    fullDesc: 'Price is established above the 1st Volatility Band (for Long) or below the 1st Band (for Short) in the active expansion corridor.',
+    hint: 'Confirms price is holding value above the 1st band.'
   },
   {
     id: 'trigger',
     number: 3,
-    name: 'Trigger',
-    shortDesc: 'Candle closed back through zone',
-    fullDesc: 'A 5m candle has closed back through the zone in the direction of the trend (not entered mid-candle or mid-move).',
-    hint: 'Confirms rejection and momentum resumption.'
+    name: 'Ribbon Rejection & Close > EMA 8',
+    shortDesc: 'Rejection or engulfing candle closes above EMA 8',
+    fullDesc: 'Price rejects the ribbon with rejection candles or a strong engulfing candle, and closes decisively above EMA 8 (or below EMA 8 for Short).',
+    hint: 'Never enter mid-candle; wait for the candle to close beyond EMA 8.'
   },
   {
     id: 'stop',
     number: 4,
-    name: 'Stop Placement',
-    shortDesc: 'Beyond structure + buffer',
-    fullDesc: 'Stop loss is placed safely beyond structural swing high/low plus a buffer (not just 1 tick past a moving average).',
-    hint: 'Prevents premature stop-outs from normal micro wick noise.'
+    name: 'SL Below Breakout Candle',
+    shortDesc: 'Stop loss placed below breakout candle',
+    fullDesc: 'Stop loss is placed directly below the low of the breakout/rejection candle (or above high for Short).',
+    hint: 'Structural protection; an immediate breach of the trigger candle invalidates the entry.'
   },
   {
     id: 'room',
     number: 5,
-    name: 'Room to Obstacle',
-    shortDesc: 'First obstacle ≥ 1.5R away',
-    fullDesc: 'The first major opposing obstacle (opposing FVG, PDH/PDL, overnight high/low, ±2σ band) is at least 1.5R away.',
-    hint: 'Guarantees asymmetric reward-to-risk before encountering friction.'
+    name: 'Target: 1:2 RR Ratio',
+    shortDesc: 'Strict 1:2 Risk-to-Reward target',
+    fullDesc: 'Take profit target is set to a 1:2 RR ratio (TP distance = 2 × SL distance).',
+    hint: 'Above the 1st band, bank high-probability 1:2 RR returns.'
   },
   {
     id: 'session',
     number: 6,
-    name: 'Session Quality',
-    shortDesc: 'NY Open or Power Hour window',
-    fullDesc: 'Trade entry is inside NY Open (09:30–11:00 ET) or Power Hour (15:00–16:00 ET); avoids the 11:30–14:00 dead zone.',
-    hint: 'Volume and institutional follow-through drop sharply during lunch and overnight.'
+    name: 'RSI & Session Quality',
+    shortDesc: 'RSI not extreme (<70 Long / >30 Short) & Active Session',
+    fullDesc: 'RSI is not overbought (< 70 for Longs) or oversold (> 30 for Shorts), and session is active.',
+    hint: 'Prevents buying into exhausted momentum impulses.'
   }
 ];
+
+export const SETUP_2_GATES: GateInfo[] = [
+  {
+    id: 'permission',
+    number: 1,
+    name: 'Trend Strength > 24',
+    shortDesc: 'Trend > 24 & Directional alignment',
+    fullDesc: 'Trend strength / ADX is strictly above 24 on both NQ and ES, confirming underlying directional bias.',
+    hint: 'Both A++ setups require Trend > 24.'
+  },
+  {
+    id: 'location',
+    number: 2,
+    name: 'Location: Below 1st Band (Deep Pullback)',
+    shortDesc: 'Price is below 1st Band with deep pullback',
+    fullDesc: 'Price is below the 1st Band (for Long) and has pulled back deeply into the ribbon / RED line (EMA 22) or key 4H Gap.',
+    hint: 'Deep retest sweeps weak hands before expansion.'
+  },
+  {
+    id: 'trigger',
+    number: 3,
+    name: 'Deep Rejection & Close > EMA 8',
+    shortDesc: 'Deep rejection candle closes back above EMA 8',
+    fullDesc: 'Price rejects deeply off ribbon/EMA 22 with rejection candles or a strong engulfing candle closing back above EMA 8 (or below EMA 8 for Short).',
+    hint: 'Confirms baseline support held and momentum is reclaimed.'
+  },
+  {
+    id: 'stop',
+    number: 4,
+    name: 'SL Below Breakout Candle',
+    shortDesc: 'Stop loss placed below breakout candle',
+    fullDesc: 'Stop loss is placed directly below the low of the breakout/rejection candle (or above high for Short).',
+    hint: 'Structural protection anchored strictly to the breakout trigger.'
+  },
+  {
+    id: 'room',
+    number: 5,
+    name: 'Target: 2nd Band',
+    shortDesc: 'Take profit targets the 2nd Volatility Band',
+    fullDesc: 'Take profit is set to target the 2nd Volatility Band, capturing the full expansion move out of the deep retest.',
+    hint: 'Deep pullbacks below 1st band offer larger runway to expand all the way to 2nd band.'
+  },
+  {
+    id: 'session',
+    number: 6,
+    name: 'RSI Reset & Market Alignment',
+    shortDesc: 'RSI reset to neutral & NQ/ES in agreement',
+    fullDesc: 'RSI cooled off from extremes (reset near 40–60), session is active, and NQ/ES charts agree.',
+    hint: 'Ensures deep pullback is an accumulation retest rather than a trend breakdown.'
+  }
+];
+
+export function getGatesForScenario(scenario: ScenarioId): GateInfo[] {
+  if (scenario === 'SETUP_2_DEEP_RETEST') {
+    return SETUP_2_GATES;
+  }
+  return SETUP_1_GATES;
+}
+
+export const GATES_CONFIG: GateInfo[] = SETUP_1_GATES;
 
 export interface InstrumentSpec {
   symbol: Instrument;
@@ -115,54 +178,70 @@ export interface ScenarioInfo {
 
 export const SCENARIOS: ScenarioInfo[] = [
   {
+    id: 'SETUP_1_VELOCITY',
+    code: 'Type A',
+    label: 'Setup 1 (Type A): Above 1st Band Ribbon Rejection (1:2 RR)',
+    description: 'Trend > 24. Price is above the 1st Band. Ribbon rejection or strong engulfing candle closing above EMA 8. SL below breakout candle. TP: 1:2 RR.'
+  },
+  {
+    id: 'SETUP_2_DEEP_RETEST',
+    code: 'Type B',
+    label: 'Setup 2 (Type B): Below 1st Band Deep Retest (Target: 2nd Band)',
+    description: 'Trend > 24. Price is below the 1st Band with deep pullback into ribbon/EMA 22. Rejection or strong engulfing candle closing back above EMA 8. SL below breakout candle. TP: 2nd Band.'
+  },
+  {
+    id: 'Other',
+    code: 'Other',
+    label: 'Other: Discretionary Setup',
+    description: 'Alternative discretionary scenario (specify in trade notes).'
+  },
+  {
     id: 'A',
     code: 'A',
-    label: 'A: Shallow pullback',
+    label: 'A: Shallow pullback (Legacy)',
     description: 'Quick pullback to EMA 8 in strong impulse trend.'
   },
   {
     id: 'B',
     code: 'B',
-    label: 'B: Confluence pullback (EMA21 + VWAP)',
+    label: 'B: Confluence pullback (Legacy)',
     description: 'High-conviction pullback into confluence zone of EMA 21 and session VWAP.'
   },
   {
     id: 'C',
     code: 'C',
-    label: 'C: Deep pullback to EMA55',
+    label: 'C: Deep pullback to EMA55 (Legacy)',
     description: 'Deeper corrective retest of baseline trend anchor (EMA 55).'
   },
   {
     id: 'D',
     code: 'D',
-    label: 'D: Break and retest',
+    label: 'D: Break and retest (Legacy)',
     description: 'Breakout above/below key level (PDH/PDL, range boundary) followed by clean retest.'
   },
   {
     id: 'E',
     code: 'E',
-    label: 'E: Sweep and reclaim',
+    label: 'E: Sweep and reclaim (Legacy)',
     description: 'Liquidity sweep of prior high/low followed by sharp reclaim back inside structure.'
   },
   {
     id: 'F',
     code: 'F',
-    label: 'F: Range fade at ±2σ',
+    label: 'F: Range fade at ±2σ (Legacy)',
     description: 'Mean reversion fade at the outer ±2σ VWAP band back toward VWAP median.'
   },
   {
     id: 'G',
     code: 'G',
-    label: 'G: Short pullback (mirror of B)',
+    label: 'G: Short pullback (Legacy)',
     description: 'Bearish trend confluence pullback into EMA 21 and downward-sloping VWAP.'
-  },
-  {
-    id: 'Other',
-    code: 'Other',
-    label: 'Other setup',
-    description: 'Alternative discretionary scenario (specify in trade notes).'
   }
 ];
+
+export const PRIMARY_SETUPS = SCENARIOS.filter(
+  (s) => s.id === 'SETUP_1_VELOCITY' || s.id === 'SETUP_2_DEEP_RETEST'
+);
 
 export interface ScaleExit {
   id: string;

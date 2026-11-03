@@ -32,6 +32,7 @@ import {
   Direction,
   DISCIPLINE_TAGS,
   GATES_CONFIG,
+  getGatesForScenario,
   GateEvaluation,
   INSTRUMENTS,
   Instrument,
@@ -65,7 +66,7 @@ export const LogTradeView: React.FC<LogTradeViewProps> = ({
   const [instrument, setInstrument] = useState<Instrument>(activeTradeToEdit?.instrument ?? 'MNQ');
   const [direction, setDirection] = useState<Direction>(activeTradeToEdit?.direction ?? 'Long');
   const [dateTimeLocal, setDateTimeLocal] = useState<string>(() => getCurrentDateTimeLocal());
-  const [scenario, setScenario] = useState<ScenarioId>(activeTradeToEdit?.scenario ?? 'B');
+  const [scenario, setScenario] = useState<ScenarioId>(activeTradeToEdit?.scenario ?? 'SETUP_1_VELOCITY');
   const [scenarioCustomNote, setScenarioCustomNote] = useState<string>(activeTradeToEdit?.scenarioCustomNote ?? '');
 
   // Cross-market regime context
@@ -560,22 +561,83 @@ export const LogTradeView: React.FC<LogTradeViewProps> = ({
                 </div>
               </div>
 
-              {/* Scenario dropdown */}
-              <div>
-                <label className="text-[11px] font-medium text-slate-400 block mb-1">
-                  Arsenal Setup Scenario
-                </label>
-                <select
-                  value={scenario}
-                  onChange={(e) => setScenario(e.target.value as ScenarioId)}
-                  className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-sky-500"
-                >
-                  {SCENARIOS.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.label} — {s.description}
-                    </option>
-                  ))}
-                </select>
+              {/* Two A++ Setups Selection */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-medium text-slate-400 block">
+                    Two A++ Trading Setups
+                  </label>
+                  <span className="text-[10px] font-mono text-sky-400 font-semibold uppercase">
+                    Only 2 Valid Entries
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {/* Setup 1 Button */}
+                  <button
+                    type="button"
+                    onClick={() => setScenario('SETUP_1_VELOCITY')}
+                    className={`p-3 rounded-lg border text-left transition-all relative ${
+                      scenario === 'SETUP_1_VELOCITY'
+                        ? 'bg-sky-950/40 border-sky-500 shadow-md shadow-sky-950/50'
+                        : 'bg-slate-900/60 border-slate-800 hover:border-slate-700 text-slate-400'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-1 mb-1">
+                      <span className="text-xs font-bold text-slate-100 flex items-center gap-1.5">
+                        <span className={`w-2 h-2 rounded-full ${scenario === 'SETUP_1_VELOCITY' ? 'bg-sky-400' : 'bg-slate-600'}`} />
+                        Setup 1 (Type A): Above 1st Band
+                      </span>
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-sky-950 border border-sky-800 text-sky-300">
+                        1:2 RR Target
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 leading-tight">
+                      Price is <strong>above 1st Band</strong>. Trend &gt; 24. Rejection/engulfing closes above EMA 8. SL below breakout candle. <strong>TP: 1:2 RR</strong>.
+                    </p>
+                  </button>
+
+                  {/* Setup 2 Button */}
+                  <button
+                    type="button"
+                    onClick={() => setScenario('SETUP_2_DEEP_RETEST')}
+                    className={`p-3 rounded-lg border text-left transition-all relative ${
+                      scenario === 'SETUP_2_DEEP_RETEST'
+                        ? 'bg-amber-950/40 border-amber-500 shadow-md shadow-amber-950/50'
+                        : 'bg-slate-900/60 border-slate-800 hover:border-slate-700 text-slate-400'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-1 mb-1">
+                      <span className="text-xs font-bold text-slate-100 flex items-center gap-1.5">
+                        <span className={`w-2 h-2 rounded-full ${scenario === 'SETUP_2_DEEP_RETEST' ? 'bg-amber-400' : 'bg-slate-600'}`} />
+                        Setup 2 (Type B): Below 1st Band
+                      </span>
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-950 border border-amber-800 text-amber-300">
+                        Target: 2nd Band
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 leading-tight">
+                      Price is <strong>below 1st Band</strong>. Trend &gt; 24. Deep pullback into ribbon/EMA 22, closes back above EMA 8. SL below breakout candle. <strong>TP: 2nd Band</strong>.
+                    </p>
+                  </button>
+                </div>
+
+                {/* Legacy / Other dropdown selector */}
+                <div className="pt-1 flex items-center justify-between text-[11px]">
+                  <span className="text-slate-500">Other / Legacy setups:</span>
+                  <select
+                    value={scenario}
+                    onChange={(e) => setScenario(e.target.value as ScenarioId)}
+                    className="bg-slate-900 border border-slate-800 rounded px-2 py-0.5 text-xs text-slate-400 focus:outline-none focus:border-sky-500"
+                  >
+                    {SCENARIOS.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                 {scenario === 'Other' && (
                   <input
                     type="text"
@@ -664,46 +726,111 @@ export const LogTradeView: React.FC<LogTradeViewProps> = ({
               </div>
 
               {/* ADX and RSI Inputs */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <label className="text-[11px] font-medium text-slate-400">
-                      ADX (Threshold: 20)
-                    </label>
-                    <span
-                      className={`text-[10px] font-mono ${
-                        adx >= 20 ? 'text-emerald-400' : 'text-amber-400'
-                      }`}
-                    >
-                      {adx >= 20 ? 'Trending' : 'Weak / Chop'}
-                    </span>
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="text-[11px] font-medium text-slate-400">
+                        Trend Strength / ADX
+                      </label>
+                      <span
+                        className={`text-[10px] font-mono font-semibold ${
+                          adx > 24 ? 'text-emerald-400' : 'text-rose-400'
+                        }`}
+                      >
+                        {adx > 24 ? 'Trend > 24 (Valid)' : 'Trend ≤ 24 (Invalid)'}
+                      </span>
+                    </div>
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      max="100"
+                      value={adx}
+                      onChange={(e) => setAdx(parseFloat(e.target.value) || 0)}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 font-mono focus:outline-none focus:border-sky-500"
+                    />
                   </div>
-                  <input
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    max="100"
-                    value={adx}
-                    onChange={(e) => setAdx(parseFloat(e.target.value) || 0)}
-                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 font-mono focus:outline-none focus:border-sky-500"
-                  />
+
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="text-[11px] font-medium text-slate-400">RSI (14)</label>
+                      <span
+                        className={`text-[10px] font-mono ${
+                          (direction === 'Long' && rsi >= 70) || (direction === 'Short' && rsi <= 30)
+                            ? 'text-rose-400 font-bold'
+                            : 'text-emerald-400'
+                        }`}
+                      >
+                        {rsi >= 70 ? 'Overbought' : rsi <= 30 ? 'Oversold' : 'Safe Range'}
+                      </span>
+                    </div>
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      max="100"
+                      value={rsi}
+                      onChange={(e) => setRsi(parseFloat(e.target.value) || 0)}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 font-mono focus:outline-none focus:border-sky-500"
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <label className="text-[11px] font-medium text-slate-400">RSI (14)</label>
-                    <span className="text-[10px] font-mono text-slate-400">5m</span>
+                {/* Real-time Trend & Confluence Warnings */}
+                {adx <= 24 && (
+                  <div className="p-2.5 rounded-lg bg-rose-950/40 border border-rose-500/50 text-rose-200 text-xs flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-semibold text-rose-300">
+                        Trend Strength Warning ({adx} ≤ 24):
+                      </span>{' '}
+                      Both A++ setups require <strong>Trend &gt; 24</strong>. Low ADX indicates chop and flat range conditions where ribbon bounces fail.
+                    </div>
                   </div>
-                  <input
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    max="100"
-                    value={rsi}
-                    onChange={(e) => setRsi(parseFloat(e.target.value) || 0)}
-                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 font-mono focus:outline-none focus:border-sky-500"
-                  />
-                </div>
+                )}
+
+                {scenario === 'SETUP_1_VELOCITY' && (
+                  <div className="p-2 rounded-lg bg-sky-950/30 border border-sky-800/40 text-[11px] text-sky-300 flex items-center justify-between">
+                    <span>
+                      <strong>Setup 1 Rules:</strong> Price above 1st Band · Rejection &gt; EMA 8 · SL below breakout
+                    </span>
+                    <span className="font-mono font-bold text-sky-200 px-1.5 py-0.5 bg-sky-900/60 rounded">
+                      TP: 1:2 RR
+                    </span>
+                  </div>
+                )}
+
+                {scenario === 'SETUP_2_DEEP_RETEST' && (
+                  <div className="p-2 rounded-lg bg-amber-950/30 border border-amber-800/40 text-[11px] text-amber-300 flex items-center justify-between">
+                    <span>
+                      <strong>Setup 2 Rules:</strong> Price below 1st Band · Deep Retest to EMA 22 &gt; EMA 8 · SL below breakout
+                    </span>
+                    <span className="font-mono font-bold text-amber-200 px-1.5 py-0.5 bg-amber-900/60 rounded">
+                      TP: 2nd Band
+                    </span>
+                  </div>
+                )}
+
+                {direction === 'Long' && rsi >= 70 && (
+                  <div className="p-2.5 rounded-lg bg-rose-950/40 border border-rose-500/50 text-rose-200 text-xs flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-semibold text-rose-300">RSI Overbought ({rsi} ≥ 70):</span>{' '}
+                      Long entries into overbought RSI face immediate pullback risk.
+                    </div>
+                  </div>
+                )}
+
+                {direction === 'Short' && rsi <= 30 && (
+                  <div className="p-2.5 rounded-lg bg-rose-950/40 border border-rose-500/50 text-rose-200 text-xs flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-semibold text-rose-300">RSI Oversold ({rsi} ≤ 30):</span>{' '}
+                      Short entries into oversold RSI face bounce/squeeze risk.
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -713,10 +840,16 @@ export const LogTradeView: React.FC<LogTradeViewProps> = ({
                 <div>
                   <h3 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
                     <ShieldAlert className="w-4 h-4 text-sky-400" />
-                    2. Pre-Trade Gate Checklist
+                    2. Pre-Trade A++ Confluences (
+                    {scenario === 'SETUP_1_VELOCITY'
+                      ? 'Setup 1: Velocity'
+                      : scenario === 'SETUP_2_DEEP_RETEST'
+                      ? 'Setup 2: Deep Retest'
+                      : 'Checklist'}
+                    )
                   </h3>
                   <p className="text-[11px] text-slate-400">
-                    Process quality over outcome: verify all 6 gates before order entry
+                    Strict mechanical execution: confirm all 6 setup-specific confluences
                   </p>
                 </div>
                 <div className="text-right">
@@ -728,7 +861,7 @@ export const LogTradeView: React.FC<LogTradeViewProps> = ({
 
               {/* Gate items list */}
               <div className="space-y-2 pt-1">
-                {GATES_CONFIG.map((gate) => {
+                {getGatesForScenario(scenario).map((gate) => {
                   const passed = gates[gate.id];
                   const isSessionGate = gate.id === 'session';
 
@@ -860,9 +993,14 @@ export const LogTradeView: React.FC<LogTradeViewProps> = ({
 
                 {/* Stop Loss Price */}
                 <div>
-                  <label className="text-[11px] font-medium text-slate-400 block mb-1">
-                    Stop Loss Price
-                  </label>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-[11px] font-medium text-slate-400">
+                      Stop Loss Price
+                    </label>
+                    <span className="text-[10px] text-slate-500 font-mono">
+                      Below breakout
+                    </span>
+                  </div>
                   <input
                     type="number"
                     step="0.25"
@@ -874,9 +1012,25 @@ export const LogTradeView: React.FC<LogTradeViewProps> = ({
 
                 {/* Target 1 */}
                 <div>
-                  <label className="text-[11px] font-medium text-slate-400 block mb-1">
-                    Target 1 (T1)
-                  </label>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-[11px] font-medium text-slate-400">
+                      Target 1 ({scenario === 'SETUP_1_VELOCITY' ? '1:2 RR' : '2nd Band'})
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const risk = Math.abs(entryPrice - stopPrice);
+                        if (risk > 0) {
+                          const t1 = direction === 'Long' ? entryPrice + risk * 2 : entryPrice - risk * 2;
+                          setTarget1Price(Number(t1.toFixed(2)));
+                        }
+                      }}
+                      className="text-[10px] text-sky-400 hover:text-sky-300 font-mono font-medium underline"
+                      title="Auto-calculate 1:2 RR target price"
+                    >
+                      Calc 1:2 RR
+                    </button>
+                  </div>
                   <input
                     type="number"
                     step="0.25"

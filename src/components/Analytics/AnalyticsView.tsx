@@ -193,7 +193,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ trades }) => {
         bestTradeR,
         worstTradeR,
       };
-    }).filter((item) => item.count > 0 || item.scenario.id === 'A' || item.scenario.id === 'B' || item.scenario.id === 'C');
+    }).filter((item) => item.count > 0 || item.scenario.id === 'SETUP_1_VELOCITY' || item.scenario.id === 'SETUP_2_DEEP_RETEST');
   }, [closedTrades]);
 
   // 3. Grade Performance Matrix (A vs B vs C)

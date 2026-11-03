@@ -20,6 +20,7 @@ import React, { useEffect, useState } from 'react';
 import { getScreenshot } from '../../lib/screenshotStorage';
 import {
   GATES_CONFIG,
+  getGatesForScenario,
   INSTRUMENTS,
   SCENARIOS,
   TradeRecord,
@@ -255,14 +256,14 @@ export const TradeDetailModal: React.FC<TradeDetailModalProps> = ({
           {/* 6 Gates Status */}
           <div className="bg-[#0e1424] p-4 rounded-xl border border-slate-800 space-y-2.5">
             <h4 className="text-xs font-bold text-slate-200 flex items-center justify-between">
-              <span>The 6 Execution Gates</span>
+              <span>Pre-Trade A++ Confluences</span>
               <span className="text-[11px] font-mono text-slate-400">
                 Grade {trade.grade} ({trade.suggestedSize.toUpperCase()} size)
               </span>
             </h4>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-              {GATES_CONFIG.map((g) => {
+              {getGatesForScenario(trade.scenario).map((g) => {
                 const passed = trade.gates[g.id];
                 return (
                   <div
