@@ -1,0 +1,181 @@
+//@version=5
+indicator("SMT ES [Arsenal]", shorttitle="SMT ES", overlay=true, max_bars_back=500)
+
+// Standalone SMT check: does ES confirm NQ at swept levels (PDH/PDL, PWH/PWL, PMH/PML, short-term and intermediate-term swings)?
+// Put this on your NQ / MNQ chart. It only needs ES data, so it stays light.
+
+string grpTr = "Trend (for the ES TREND row)"
+int    lenFast = input.int(8,  "Fast EMA", minval=2, group=grpTr)
+int    lenMid  = input.int(21, "Mid EMA",  minval=5, group=grpTr)
+int    lenSlow = input.int(55, "Slow EMA", minval=10, group=grpTr)
+string tblPos  = input.string("Top Left", "Table Position", options=["Top Left", "Top Right", "Bottom Left", "Bottom Right"], group=grpTr)
+string grpTb  = "Table Size & Font"
+string fsLabel = input.string("small", "Label Font Size", options=["tiny", "small", "normal", "large", "huge"], group=grpTb)
+string fsValue = input.string("small", "Value Font Size", options=["tiny", "small", "normal", "large", "huge"], group=grpTb)
+float  colW1   = input.float(0.0, "Label Column Width (% of chart, 0 = auto)", minval=0.0, maxval=50.0, step=0.5, group=grpTb)
+float  colW2   = input.float(0.0, "Value Column Width (% of chart, 0 = auto)", minval=0.0, maxval=60.0, step=0.5, group=grpTb)
+float  rowH    = input.float(0.0, "Row Height (% of chart, 0 = auto)", minval=0.0, maxval=20.0, step=0.5, group=grpTb)
+string grpSMT = "⑭ SMT With ES"
+bool   showSMT    = input.bool(true, "Enable SMT Check", group=grpSMT)
+string smtSym     = input.symbol("MES1!", "ES Symbol", group=grpSMT)
+int    smtWin     = input.int(3, "Other Index Must Also Sweep Within (bars)", minval=1, maxval=20, group=grpSMT, tooltip="When one index takes a level, the other must take its own matching level within this many chart bars, otherwise it counts as an SMT.")
+int    smtAge     = input.int(120, "Show Latest Event For (chart bars)", minval=5, maxval=1000, group=grpSMT)
+int    smtLen     = input.int(1, "Swing Strength (bars each side)", minval=1, maxval=5, group=grpSMT, tooltip="1 = classic 3-candle short-term high/low. ITH/ITL = a short-term high/low with lower/higher short-term highs/lows on both sides.")
+bool   smtUseDOL   = input.bool(true, "Levels: PDH/PDL, PWH/PWL, PMH/PML", group=grpSMT)
+bool   smtUseSwing = input.bool(true, "Levels: Short-Term High / Low", group=grpSMT)
+bool   smtUseITH   = input.bool(true, "Levels: ITH / ITL", group=grpSMT)
+color  cSmtBull  = input.color(color.new(color.green, 25), "SMT Row: Bullish SMT", group=grpSMT)
+color  cSmtBear  = input.color(color.new(color.red, 25), "SMT Row: Bearish SMT", group=grpSMT)
+color  cSmtAlign = input.color(color.new(color.blue, 30), "SMT Row: Both Swept (aligned)", group=grpSMT)
+color  cSmtOpp   = input.color(color.new(color.orange, 40), "ES Trend Row: Opposite To NQ", group=grpSMT)
+color  cSmtNone  = input.color(color.new(color.gray, 70), "SMT / ES Rows: None", group=grpSMT)
+color  cSmtTxt   = input.color(color.white, "SMT / ES Rows: Text", group=grpSMT)
+
+float pdh  = request.security(syminfo.tickerid, "D", high[1], gaps=barmerge.gaps_off, lookahead=barmerge.lookahead_on)
+float pdl  = request.security(syminfo.tickerid, "D", low[1],  gaps=barmerge.gaps_off, lookahead=barmerge.lookahead_on)
+float pwhN = request.security(syminfo.tickerid, "W", high[1], gaps=barmerge.gaps_off, lookahead=barmerge.lookahead_on)
+float pwlN = request.security(syminfo.tickerid, "W", low[1],  gaps=barmerge.gaps_off, lookahead=barmerge.lookahead_on)
+float pmhN = request.security(syminfo.tickerid, "M", high[1], gaps=barmerge.gaps_off, lookahead=barmerge.lookahead_on)
+float pmlN = request.security(syminfo.tickerid, "M", low[1],  gaps=barmerge.gaps_off, lookahead=barmerge.lookahead_on)
+float ema8  = ta.ema(close, lenFast)
+float ema21 = ta.ema(close, lenMid)
+float ema55 = ta.ema(close, lenSlow)
+bool bullTrend = ema8 > ema21 and close > ema55
+bool bearTrend = ema8 < ema21 and close < ema55
+
+// ── F) SMT WITH ES (swept DOL / swing / ITH-ITL: did ES confirm NQ?) ─────────
+[esH, esL, esC] = request.security(smtSym, timeframe.period, [high, low, close], gaps=barmerge.gaps_off, lookahead=barmerge.lookahead_off, ignore_invalid_symbol=true)
+float pdhE = request.security(smtSym, "D", high[1], gaps=barmerge.gaps_off, lookahead=barmerge.lookahead_on, ignore_invalid_symbol=true)
+float pdlE = request.security(smtSym, "D", low[1],  gaps=barmerge.gaps_off, lookahead=barmerge.lookahead_on, ignore_invalid_symbol=true)
+float pwhE = request.security(smtSym, "W", high[1], gaps=barmerge.gaps_off, lookahead=barmerge.lookahead_on, ignore_invalid_symbol=true)
+float pwlE = request.security(smtSym, "W", low[1],  gaps=barmerge.gaps_off, lookahead=barmerge.lookahead_on, ignore_invalid_symbol=true)
+float pmhE = request.security(smtSym, "M", high[1], gaps=barmerge.gaps_off, lookahead=barmerge.lookahead_on, ignore_invalid_symbol=true)
+float pmlE = request.security(smtSym, "M", low[1],  gaps=barmerge.gaps_off, lookahead=barmerge.lookahead_on, ignore_invalid_symbol=true)
+
+// Short-term and intermediate-term swing highs/lows (ITH = a short-term high with lower short-term highs on both sides)
+f_swing(float h, float l, int len) =>
+    float ph = ta.pivothigh(h, len, len)
+    float pl = ta.pivotlow(l, len, len)
+    var float sth = na
+    var float sh1 = na
+    var float sh2 = na
+    var float ith = na
+    var float stl = na
+    var float sl1 = na
+    var float sl2 = na
+    var float itl = na
+    if not na(ph)
+        sh2 := sh1
+        sh1 := sth
+        sth := ph
+        if not na(sh2) and sh1 > sh2 and sh1 > sth
+            ith := sh1
+    if not na(pl)
+        sl2 := sl1
+        sl1 := stl
+        stl := pl
+        if not na(sl2) and sl1 < sl2 and sl1 < stl
+            itl := sl1
+    [sth, stl, ith, itl]
+
+// One level pair. code: 0 none, 1 both swept (aligned), 2 only NQ swept (SMT), 3 only ES swept (SMT)
+f_smt(bool isHigh, float lvN, float lvE, float hN, float lN, float hE, float lE, int win) =>
+    var float refN = na
+    var float refE = na
+    var int   st   = -1
+    var bool  swN  = false
+    var bool  swE  = false
+    var bool  done = false
+    var int   code = 0
+    var int   evBar = -1
+    if st < 0
+        if done and (nz(lvN, -1.0) != nz(refN, -1.0) or nz(lvE, -1.0) != nz(refE, -1.0))
+            done := false
+        if not done
+            refN := lvN
+            refE := lvE
+    if not done and not na(refN) and not na(refE)
+        bool tN = isHigh ? hN > refN : lN < refN
+        bool tE = isHigh ? hE > refE : lE < refE
+        if tN
+            swN := true
+        if tE
+            swE := true
+        if st < 0 and (swN or swE)
+            st := bar_index
+        if st >= 0
+            if swN and swE
+                code := 1
+                evBar := st
+                done := true
+                st := -1
+                swN := false
+                swE := false
+            else if bar_index - st >= win
+                code := swN ? 2 : 3
+                evBar := st
+                done := true
+                st := -1
+                swN := false
+                swE := false
+    [code, evBar]
+
+[sthN, stlN, ithN, itlN] = f_swing(high, low, smtLen)
+[sthE, stlE, ithE, itlE] = f_swing(esH, esL, smtLen)
+[sc1, se1]   = f_smt(true,  pdh,  pdhE, high, low, esH, esL, smtWin)
+[sc2, se2]   = f_smt(false, pdl,  pdlE, high, low, esH, esL, smtWin)
+[sc3, se3]   = f_smt(true,  pwhN, pwhE, high, low, esH, esL, smtWin)
+[sc4, se4]   = f_smt(false, pwlN, pwlE, high, low, esH, esL, smtWin)
+[sc5, se5]   = f_smt(true,  pmhN, pmhE, high, low, esH, esL, smtWin)
+[sc6, se6]   = f_smt(false, pmlN, pmlE, high, low, esH, esL, smtWin)
+[sc7, se7]   = f_smt(true,  sthN, sthE, high, low, esH, esL, smtWin)
+[sc8, se8]   = f_smt(false, stlN, stlE, high, low, esH, esL, smtWin)
+[sc9, se9]   = f_smt(true,  ithN, ithE, high, low, esH, esL, smtWin)
+[sc10, se10] = f_smt(false, itlN, itlE, high, low, esH, esL, smtWin)
+int[] smtCodes = array.from(sc1, sc2, sc3, sc4, sc5, sc6, sc7, sc8, sc9, sc10)
+int[] smtEvs   = array.from(se1, se2, se3, se4, se5, se6, se7, se8, se9, se10)
+var string[] smtNames = array.from("PDH", "PDL", "PWH", "PWL", "PMH", "PML", "STH", "STL", "ITH", "ITL")
+var bool[]   smtHi    = array.from(true, false, true, false, true, false, true, false, true, false)
+
+float esE8  = ta.ema(esC, lenFast)
+float esE21 = ta.ema(esC, lenMid)
+float esE55 = ta.ema(esC, lenSlow)
+bool  esBull = esE8 > esE21 and esC > esE55
+bool  esBear = esE8 < esE21 and esC < esE55
+
+
+var table dash = table.new(tblPos == "Top Left" ? position.top_left : tblPos == "Top Right" ? position.top_right : tblPos == "Bottom Left" ? position.bottom_left : position.bottom_right, 2, 2, bgcolor=color.new(color.black, 20), border_color=color.new(color.gray, 60), border_width=1)
+if barstate.islast
+    // Row 15: SMT with ES (latest swept-level event: both swept = aligned, one swept = SMT)
+    int bestKey = -1
+    int bestK   = -1
+    for k = 0 to 9
+        bool grpOn = k < 6 ? smtUseDOL : k < 8 ? smtUseSwing : smtUseITH
+        int  cdK   = array.get(smtCodes, k)
+        int  evK   = array.get(smtEvs, k)
+        if grpOn and cdK != 0 and (bar_index - evK) <= smtAge
+            int keyK = evK * 2 + (cdK > 1 ? 1 : 0)
+            if keyK > bestKey
+                bestKey := keyK
+                bestK := k
+    string smtTxt = not showSMT ? "OFF" : na(esC) ? "ES DATA? check symbol" : "— NONE"
+    color  smtBg  = cSmtNone
+    if showSMT and bestK >= 0
+        int    bCd = array.get(smtCodes, bestK)
+        bool   bHi = array.get(smtHi, bestK)
+        string bNm = array.get(smtNames, bestK)
+        if bCd == 1
+            smtTxt := (bHi ? "▲ " : "▼ ") + "BOTH swept " + bNm + "  " + str.tostring(bar_index - array.get(smtEvs, bestK)) + "b ago"
+            smtBg := cSmtAlign
+        else
+            smtTxt := (bHi ? "▼ SMT " : "▲ SMT ") + bNm + (bCd == 2 ? " (NQ only)" : " (ES only)") + "  " + str.tostring(bar_index - array.get(smtEvs, bestK)) + "b ago"
+            smtBg := bHi ? cSmtBear : cSmtBull
+    table.cell(dash, 0, 0, "SMT ES", width=colW1, height=rowH, text_color=color.new(color.gray, 20), text_size=fsLabel)
+    table.cell(dash, 1, 0, smtTxt, width=colW2, height=rowH, text_color=cSmtTxt, text_size=fsValue, bgcolor=smtBg)
+
+    // Row 16: is ES moving the same way as NQ (EMA ribbon trend)
+    bool   sameDir = (bullTrend and esBull) or (bearTrend and esBear)
+    bool   oppDir  = (bullTrend and esBear) or (bearTrend and esBull)
+    string esTxt   = (esBull ? "▲ BULL" : esBear ? "▼ BEAR" : "— MIXED") + (sameDir ? "  = NQ" : oppDir ? "  ≠ NQ" : "")
+    table.cell(dash, 0, 1, "ES TREND", width=colW1, height=rowH, text_color=color.new(color.gray, 20), text_size=fsLabel)
+    table.cell(dash, 1, 1, not showSMT ? "OFF" : na(esC) ? "ES DATA?" : esTxt, width=colW2, height=rowH, text_color=cSmtTxt, text_size=fsValue, bgcolor=sameDir ? cSmtAlign : oppDir ? cSmtOpp : cSmtNone)

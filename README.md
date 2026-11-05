@@ -1,4 +1,4 @@
-# Viper Td Logger (VTL) & Arsenal Trading System
+# Viper Td Logger (VTL) & SMT Trading System
 
 [![GitHub License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![React](https://img.shields.io/badge/React-19-blue.svg)](https://react.dev)
@@ -6,7 +6,7 @@
 [![Tailwind CSS](https://img.shields.io/badge/TailwindCSS-v4-38B2AC.svg)](https://tailwindcss.com)
 [![Pine Script](https://img.shields.io/badge/PineScript-v5-green.svg)](https://www.tradingview.com/pine-script-docs/)
 
-> Institutional Futures Trading Journal, Confluence Gate Analytics, and Execution Platform for Micro E-mini Nasdaq (MNQ) and Micro E-mini S&P 500 (MES), paired directly with the **Arsenal Pro [Antigravity]** TradingView indicator.
+> Institutional Futures Trading Journal, Confluence Gate Analytics, and Execution Platform for Micro E-mini Nasdaq (MNQ) and Micro E-mini S&P 500 (MES), paired with the optional **Viper SMT ES** TradingView companion indicator.
 
 ---
 
@@ -55,14 +55,14 @@ The system eliminates discretionary hesitation by restricting execution to stric
 
 ## 🛠️ Ecosystem Overview
 
-### 1. Arsenal Pro TradingView Indicator (`arsenal.pine`)
+### 1. Viper SMT ES TradingView Companion (`Viper 💥 Ultimate SMT Weapon Final Edition.pine`)
 Included directly in the root directory:
-* **VWAP ±1σ & ±2σ Bands:** Dynamic volatility expansion envelopes.
-* **EMA Trend Ribbon:** 8 / 21 / 55 EMA alignment for directional bias.
-* **1m CISD Engine:** Lower-timeframe change in state of delivery (Type A shallow vs Type B deep pattern-confirmed).
-* **PO3 HTF Candle Projection:** Multi-timeframe open/high/low/close visualization.
-* **HTF FVG Accelerators:** Automated detection of unfilled 15m, 30m, 1H, 4H, and Daily Fair Value Gaps.
-* **15-Row Confluence HUD:** Real-time signal dashboard scoring market regime, bias, and session windows.
+* **Cross-index SMT checks:** Compares NQ/MNQ against ES/MES at prior day, week, and month highs/lows.
+* **Swing-level divergence:** Tracks short-term and intermediate-term swing highs/lows.
+* **ES trend confirmation:** Displays ES EMA ribbon direction and whether it agrees with the chart index.
+* **Configurable dashboard:** Shows the latest aligned sweep or SMT event with adjustable table position, colors, and typography.
+
+The Pine script is an optional TradingView companion. The web app's setup gates and analytics run independently from the indicator.
 
 ### 2. Viper Trade Logger Web App (`src/`)
 A high-performance trading journal built for execution discipline:
