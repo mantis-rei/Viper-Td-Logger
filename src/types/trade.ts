@@ -5,6 +5,7 @@ export type MarketBias = 'BULL' | 'BEAR' | 'FLAT';
 export type ScenarioId =
   | 'SETUP_1_VELOCITY'
   | 'SETUP_2_DEEP_RETEST'
+  // Legacy IDs kept for backward compatibility with previously saved trades
   | 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'Other';
 export type TradeGrade = 'A' | 'B' | 'C';
 export type TradeStatus = 'OPEN' | 'CLOSED';
@@ -43,9 +44,9 @@ export const SETUP_1_GATES: GateInfo[] = [
     id: 'location',
     number: 2,
     name: 'Location: Above 1st Band',
-    shortDesc: 'Price trading above 1st Band',
-    fullDesc: 'Price is established above the 1st Volatility Band in the active expansion corridor.',
-    hint: 'Confirms price is holding value above the 1st band.'
+    shortDesc: 'Entry location: price above 1st Band',
+    fullDesc: 'Price is established and trading above the 1st Volatility Band, holding value in the active expansion corridor before entry.',
+    hint: 'Setup 1 Long entry rule: price must be above the 1st Band (no deep pullback entry here).'
   },
   {
     id: 'trigger',
@@ -94,9 +95,9 @@ export const SETUP_2_GATES: GateInfo[] = [
     id: 'location',
     number: 2,
     name: 'Location: Below 1st Band (Deep Pullback)',
-    shortDesc: 'Price is below 1st Band with deep pullback',
-    fullDesc: 'Price is below the 1st Band and has pulled back deeply into the ribbon / RED line (EMA 22) or key 4H Gap.',
-    hint: 'Deep retest sweeps weak hands before expansion.'
+    shortDesc: 'Entry location: deep pullback below 1st Band to EMA 22/ribbon',
+    fullDesc: 'Price has pulled back below the 1st Band and reached a deep retest location at the ribbon / RED line (EMA 22) or key 4H Gap.',
+    hint: 'Setup 2 Long entry rule: deep retest below 1st Band to EMA 22/ribbon before reclaiming momentum.'
   },
   {
     id: 'trigger',
@@ -145,9 +146,9 @@ export const SETUP_1_GATES_SHORT: GateInfo[] = [
     id: 'location',
     number: 2,
     name: 'Location: Below 1st Band',
-    shortDesc: 'Price trading below 1st Band',
-    fullDesc: 'Price is established below the 1st Volatility Band (for Short) in the active expansion corridor.',
-    hint: 'Confirms price is holding value below the 1st band.'
+    shortDesc: 'Entry location: price below 1st Band',
+    fullDesc: 'Price is established and trading below the 1st Volatility Band, holding value in the active expansion corridor before entry.',
+    hint: 'Setup 1 Short entry rule: price must be below the 1st Band (no deep pullback entry here).'
   },
   {
     id: 'trigger',
@@ -196,9 +197,9 @@ export const SETUP_2_GATES_SHORT: GateInfo[] = [
     id: 'location',
     number: 2,
     name: 'Location: Above 1st Band (Deep Pullback)',
-    shortDesc: 'Price is above 1st Band with deep pullback',
-    fullDesc: 'Price is above the 1st Band (for Short) and has pulled back deeply into the ribbon / RED line (EMA 22) or key 4H Gap.',
-    hint: 'Deep retest sweeps weak hands before expansion.'
+    shortDesc: 'Entry location: deep pullback above 1st Band to EMA 22/ribbon',
+    fullDesc: 'Price has pulled back above the 1st Band and reached a deep retest location at the ribbon / RED line (EMA 22) or key 4H Gap.',
+    hint: 'Setup 2 Short entry rule: deep retest above 1st Band to EMA 22/ribbon before reclaiming momentum.'
   },
   {
     id: 'trigger',
@@ -292,60 +293,10 @@ export const SCENARIOS: ScenarioInfo[] = [
     label: 'Setup 2 (Type B): Deep Retest Across 1st Band (Target: 2nd Band)',
     description:
       'Trend > 24. Long: below 1st Band deep pullback to ribbon/EMA 22, close back above EMA 8 (SL below breakout). Short: above 1st Band deep pullback to ribbon/EMA 22, close back below EMA 8 (SL above breakout). TP: 2nd Band.'
-  },
-  {
-    id: 'Other',
-    code: 'Other',
-    label: 'Other: Discretionary Setup',
-    description: 'Alternative discretionary scenario (specify in trade notes).'
-  },
-  {
-    id: 'A',
-    code: 'A',
-    label: 'A: Shallow pullback (Legacy)',
-    description: 'Quick pullback to EMA 8 in strong impulse trend.'
-  },
-  {
-    id: 'B',
-    code: 'B',
-    label: 'B: Confluence pullback (Legacy)',
-    description: 'High-conviction pullback into confluence zone of EMA 21 and session VWAP.'
-  },
-  {
-    id: 'C',
-    code: 'C',
-    label: 'C: Deep pullback to EMA55 (Legacy)',
-    description: 'Deeper corrective retest of baseline trend anchor (EMA 55).'
-  },
-  {
-    id: 'D',
-    code: 'D',
-    label: 'D: Break and retest (Legacy)',
-    description: 'Breakout above/below key level (PDH/PDL, range boundary) followed by clean retest.'
-  },
-  {
-    id: 'E',
-    code: 'E',
-    label: 'E: Sweep and reclaim (Legacy)',
-    description: 'Liquidity sweep of prior high/low followed by sharp reclaim back inside structure.'
-  },
-  {
-    id: 'F',
-    code: 'F',
-    label: 'F: Range fade at ±2σ (Legacy)',
-    description: 'Mean reversion fade at the outer ±2σ VWAP band back toward VWAP median.'
-  },
-  {
-    id: 'G',
-    code: 'G',
-    label: 'G: Short pullback (Legacy)',
-    description: 'Bearish trend confluence pullback into EMA 21 and downward-sloping VWAP.'
   }
 ];
 
-export const PRIMARY_SETUPS = SCENARIOS.filter(
-  (s) => s.id === 'SETUP_1_VELOCITY' || s.id === 'SETUP_2_DEEP_RETEST'
-);
+export const PRIMARY_SETUPS = SCENARIOS;
 
 export interface ScaleExit {
   id: string;

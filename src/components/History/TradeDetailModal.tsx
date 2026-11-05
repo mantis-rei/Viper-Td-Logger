@@ -19,7 +19,6 @@ import {
 import React, { useEffect, useState } from 'react';
 import { getScreenshot } from '../../lib/screenshotStorage';
 import {
-  GATES_CONFIG,
   getGatesForScenario,
   INSTRUMENTS,
   SCENARIOS,
@@ -263,7 +262,7 @@ export const TradeDetailModal: React.FC<TradeDetailModalProps> = ({
             </h4>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-              {getGatesForScenario(trade.scenario).map((g) => {
+              {getGatesForScenario(trade.scenario, trade.direction).map((g) => {
                 const passed = trade.gates[g.id];
                 return (
                   <div

@@ -21,7 +21,7 @@ import {
   GateKey,
   INSTRUMENTS,
   Instrument,
-  SCENARIOS,
+  PRIMARY_SETUPS,
   TradeRecord,
 } from '../../types/trade';
 
@@ -157,9 +157,9 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ trades }) => {
     });
   }, [closedTrades]);
 
-  // 2. Scenario Performance Matrix (A through G)
+  // 2. Setup Performance Matrix
   const scenarioMatrix = useMemo(() => {
-    return SCENARIOS.map((s) => {
+    return PRIMARY_SETUPS.map((s) => {
       const scenarioTrades = closedTrades.filter((t) => t.scenario === s.id);
       const count = scenarioTrades.length;
       if (count === 0) {
@@ -193,7 +193,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ trades }) => {
         bestTradeR,
         worstTradeR,
       };
-    }).filter((item) => item.count > 0 || item.scenario.id === 'SETUP_1_VELOCITY' || item.scenario.id === 'SETUP_2_DEEP_RETEST');
+    }).filter((item) => item.count > 0);
   }, [closedTrades]);
 
   // 3. Grade Performance Matrix (A vs B vs C)
@@ -588,14 +588,14 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ trades }) => {
 
       {/* 2-Column Grid: Scenario Matrix & Cross-Market Agreement */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Scenario Matrix */}
+        {/* Setup Matrix */}
         <div className="lg:col-span-7 bg-[#0e1424] p-5 rounded-xl border border-slate-800 space-y-3">
           <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
             <Compass className="w-4 h-4 text-sky-400" />
-            Arsenal Setup Scenario Matrix
+            Setup Performance Matrix
           </h3>
           <p className="text-[11px] text-slate-400">
-            Performance breakdown across trend-pullback patterns (A through G):
+            Performance breakdown by selected setup (uses stored direction and gate outcomes):
           </p>
 
           <div className="overflow-x-auto rounded-lg border border-slate-800/80">

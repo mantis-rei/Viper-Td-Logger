@@ -202,8 +202,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
 
                       {/* Scenario */}
                       <td className="py-2.5 px-3 font-sans max-w-[160px] truncate text-slate-300">
-                        {SCENARIOS.find((s) => s.id === t.scenario)?.label.split(':')[1]?.trim() ??
-                          t.scenario}
+                        {SCENARIOS.find((s) => s.id === t.scenario)?.label.split(':')[0]?.trim() ?? t.scenario}
                       </td>
 
                       {/* Grade Badge */}

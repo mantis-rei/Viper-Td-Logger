@@ -7,15 +7,38 @@ import {
 
 const TRADES_STORAGE_KEY = 'trade_logger_records_v1';
 
+const LEGACY_SCENARIO_MIGRATION: Record<string, TradeRecord['scenario']> = {
+  A: 'SETUP_1_VELOCITY',
+  B: 'SETUP_1_VELOCITY',
+  C: 'SETUP_2_DEEP_RETEST',
+  D: 'SETUP_1_VELOCITY',
+  E: 'SETUP_1_VELOCITY',
+  F: 'SETUP_1_VELOCITY',
+  G: 'SETUP_1_VELOCITY',
+  Other: 'SETUP_1_VELOCITY',
+};
+
+function normalizeTradeRecord(raw: unknown): TradeRecord | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const trade = raw as TradeRecord & { scenario?: string };
+  const scenario = trade.scenario && LEGACY_SCENARIO_MIGRATION[trade.scenario]
+    ? LEGACY_SCENARIO_MIGRATION[trade.scenario]
+    : trade.scenario;
+  if (scenario !== 'SETUP_1_VELOCITY' && scenario !== 'SETUP_2_DEEP_RETEST') return null;
+  return { ...trade, scenario } as TradeRecord;
+}
+
 export function loadTradesFromStorage(): TradeRecord[] {
   try {
     const raw = localStorage.getItem(TRADES_STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) {
-      return parsed;
+    if (!Array.isArray(parsed)) return [];
+    const normalized = parsed.map(normalizeTradeRecord).filter((t): t is TradeRecord => Boolean(t));
+    if (normalized.length !== parsed.length) {
+      localStorage.setItem(TRADES_STORAGE_KEY, JSON.stringify(normalized));
     }
-    return [];
+    return normalized;
   } catch (err) {
     console.error('Failed reading trades from localStorage', err);
     return [];

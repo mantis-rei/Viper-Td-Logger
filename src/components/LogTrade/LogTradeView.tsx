@@ -31,7 +31,6 @@ import {
 import {
   Direction,
   DISCIPLINE_TAGS,
-  GATES_CONFIG,
   getGatesForScenario,
   GateEvaluation,
   INSTRUMENTS,
@@ -40,7 +39,7 @@ import {
   Regime,
   ScaleExit,
   ScenarioId,
-  SCENARIOS,
+  TradeGrade,
   TradeRecord,
 } from '../../types/trade';
 import { ImageUpload } from '../Common/ImageUpload';
@@ -67,7 +66,6 @@ export const LogTradeView: React.FC<LogTradeViewProps> = ({
   const [direction, setDirection] = useState<Direction>(activeTradeToEdit?.direction ?? 'Long');
   const [dateTimeLocal, setDateTimeLocal] = useState<string>(() => getCurrentDateTimeLocal());
   const [scenario, setScenario] = useState<ScenarioId>(activeTradeToEdit?.scenario ?? 'SETUP_1_VELOCITY');
-  const [scenarioCustomNote, setScenarioCustomNote] = useState<string>(activeTradeToEdit?.scenarioCustomNote ?? '');
 
   // Cross-market regime context
   const [mnqRegime, setMnqRegime] = useState<Regime>(activeTradeToEdit?.mnqRegime ?? 'TREND');
@@ -130,7 +128,6 @@ export const LogTradeView: React.FC<LogTradeViewProps> = ({
       setInstrument(activeTradeToEdit.instrument);
       setDirection(activeTradeToEdit.direction);
       setScenario(activeTradeToEdit.scenario);
-      setScenarioCustomNote(activeTradeToEdit.scenarioCustomNote ?? '');
       setMnqRegime(activeTradeToEdit.mnqRegime);
       setMnqBias(activeTradeToEdit.mnqBias);
       setMesRegime(activeTradeToEdit.mesRegime);
@@ -331,7 +328,6 @@ export const LogTradeView: React.FC<LogTradeViewProps> = ({
       instrument,
       direction,
       scenario,
-      scenarioCustomNote: scenario === 'Other' ? scenarioCustomNote : undefined,
       mnqRegime,
       mnqBias,
       mesRegime,
@@ -638,31 +634,6 @@ export const LogTradeView: React.FC<LogTradeViewProps> = ({
                   </button>
                 </div>
 
-                {/* Legacy / Other dropdown selector */}
-                <div className="pt-1 flex items-center justify-between text-[11px]">
-                  <span className="text-slate-500">Other / Legacy setups:</span>
-                  <select
-                    value={scenario}
-                    onChange={(e) => setScenario(e.target.value as ScenarioId)}
-                    className="bg-slate-900 border border-slate-800 rounded px-2 py-0.5 text-xs text-slate-400 focus:outline-none focus:border-sky-500"
-                  >
-                    {SCENARIOS.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {scenario === 'Other' && (
-                  <input
-                    type="text"
-                    placeholder="Describe custom setup..."
-                    value={scenarioCustomNote}
-                    onChange={(e) => setScenarioCustomNote(e.target.value)}
-                    className="mt-2 w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-sky-500"
-                  />
-                )}
               </div>
 
               {/* Cross-market regime check */}
@@ -871,7 +842,7 @@ export const LogTradeView: React.FC<LogTradeViewProps> = ({
                     )
                   </h3>
                   <p className="text-[11px] text-slate-400">
-                    Strict mechanical execution: confirm all 6 setup-specific confluences
+                    Select setup and confirm all 6 setup-specific confluences (Gate 2 = entry location for the chosen setup/direction)
                   </p>
                 </div>
                 <div className="text-right">
