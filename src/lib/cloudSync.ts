@@ -12,12 +12,16 @@ import { User } from 'firebase/auth';
 import { TradeRecord } from '../types/trade';
 import { getCurrentUser, getFirestoreService } from './firebase';
 import {
-  deleteScreenshot,
   getAllScreenshots,
   getScreenshot,
   registerCloudScreenshotHandlers,
   saveScreenshot,
 } from './screenshotStorage';
+
+interface TradeTombstone {
+  id: string;
+  deletedAt: number;
+}
 
 // Wire up screenshot storage cloud hooks
 registerCloudScreenshotHandlers({
@@ -176,6 +180,10 @@ export async function saveTradeToCloud(user: User, trade: TradeRecord): Promise<
   if (!db || !user?.uid) return;
 
   try {
+    // Clear any tombstone for this trade ID (e.g., if re-created/imported)
+    const tombstoneRef = doc(db, 'users', user.uid, 'deletedTrades', trade.id);
+    await deleteDoc(tombstoneRef).catch(() => {});
+
     const tradeRef = doc(db, 'users', user.uid, 'trades', trade.id);
     await setDoc(tradeRef, trade, { merge: true });
 
@@ -205,6 +213,17 @@ export async function deleteTradeFromCloud(
   if (!db || !user?.uid) return;
 
   try {
+    // Write tombstone first to prevent resurrection by sync/merge
+    const tombstoneRef = doc(db, 'users', user.uid, 'deletedTrades', tradeId);
+    await setDoc(
+      tombstoneRef,
+      {
+        id: tradeId,
+        deletedAt: Date.now(),
+      },
+      { merge: true }
+    );
+
     const tradeRef = doc(db, 'users', user.uid, 'trades', tradeId);
     await deleteDoc(tradeRef);
 
@@ -222,10 +241,10 @@ export async function deleteTradeFromCloud(
 
 /**
  * Performs a comprehensive two-way sync:
- * 1. Pulls all remote trades from Firestore.
- * 2. Compares with local trades and merges both directions.
- * 3. Uploads local-only trades & screenshots to Firestore.
- * 4. Downloads remote screenshots for trades in ledger.
+ * 1. Pulls all remote trades and deletion tombstones from Firestore.
+ * 2. Compares with local trades and merges both directions (tombstones win).
+ * 3. Uploads local-only trades & screenshots to Firestore (never tombstoned IDs).
+ * 4. Uploads local screenshots for trades in the merged ledger.
  * 5. Returns the consolidated merged list of trades.
  */
 export async function performFullSync(
@@ -237,19 +256,31 @@ export async function performFullSync(
     return localTrades;
   }
 
-  // 1. Fetch remote trades
+  // 1. Fetch remote trades and deletion tombstones
   const tradesCol = collection(db, 'users', user.uid, 'trades');
-  const querySnap = await getDocs(tradesCol);
+  const deletedCol = collection(db, 'users', user.uid, 'deletedTrades');
+  const [querySnap, deletedSnap] = await Promise.all([getDocs(tradesCol), getDocs(deletedCol)]);
+
+  const tombstonedIds = new Set<string>();
+  deletedSnap.forEach((docSnap) => {
+    const data = docSnap.data() as Partial<TradeTombstone>;
+    const id = data?.id || docSnap.id;
+    if (id) {
+      tombstonedIds.add(id);
+    }
+  });
 
   const remoteTradesMap = new Map<string, TradeRecord>();
   querySnap.forEach((docSnap) => {
     const data = docSnap.data() as TradeRecord;
-    if (data && data.id) {
+    if (data && data.id && !tombstonedIds.has(data.id)) {
       remoteTradesMap.set(data.id, data);
     }
   });
 
-  const localTradesMap = new Map<string, TradeRecord>(localTrades.map((t) => [t.id, t]));
+  const localTradesMap = new Map<string, TradeRecord>(
+    localTrades.filter((t) => t?.id && !tombstonedIds.has(t.id)).map((t) => [t.id, t])
+  );
   const mergedMap = new Map<string, TradeRecord>();
   const tradesToUpload: TradeRecord[] = [];
 
@@ -260,10 +291,9 @@ export async function performFullSync(
       // Exists only remotely -> keep remote
       mergedMap.set(id, remoteTrade);
     } else {
-      // Exists in both -> take the most recent modification
+      // Exists in both -> prefer local if it's more complete, otherwise keep remote
       const remoteTime = new Date(remoteTrade.createdAt).getTime();
       const localTime = new Date(localTrade.createdAt).getTime();
-      // If local trade has more recent outcome or notes, prefer local
       const isLocalMoreComplete =
         (localTrade.status === 'CLOSED' && remoteTrade.status === 'OPEN') ||
         (localTrade.exits?.length || 0) > (remoteTrade.exits?.length || 0);
@@ -277,9 +307,9 @@ export async function performFullSync(
     }
   });
 
-  // Check local-only trades -> must be uploaded to remote
+  // Check local-only trades -> upload to remote (never tombstoned)
   localTradesMap.forEach((localTrade, id) => {
-    if (!remoteTradesMap.has(id)) {
+    if (!remoteTradesMap.has(id) && !tombstonedIds.has(id)) {
       mergedMap.set(id, localTrade);
       tradesToUpload.push(localTrade);
     }
@@ -287,6 +317,7 @@ export async function performFullSync(
 
   // 2. Upload any local trades that need to be sent to Firestore
   for (const trade of tradesToUpload) {
+    if (tombstonedIds.has(trade.id)) continue;
     try {
       await setDoc(doc(db, 'users', user.uid, 'trades', trade.id), trade, { merge: true });
     } catch (e) {
@@ -294,9 +325,8 @@ export async function performFullSync(
     }
   }
 
-  // 3. Sync screenshots
+  // 3. Sync screenshots (best-effort)
   const allLocalScreenshots = await getAllScreenshots();
-  // Upload local screenshots for all trades in merged list
   for (const trade of mergedMap.values()) {
     if (trade.entryImageId && allLocalScreenshots[trade.entryImageId]) {
       uploadScreenshotToCloud(user.uid, trade.entryImageId, allLocalScreenshots[trade.entryImageId]).catch(
@@ -319,7 +349,9 @@ export async function performFullSync(
 }
 
 /**
- * Subscribes to real-time changes on the user's remote trades collection
+ * Subscribes to real-time changes on the user's remote trades collection.
+ * Fetches the deletedTrades tombstone list on each snapshot to prevent
+ * deleted trades from being resurrected by the real-time listener.
  */
 export function subscribeToTrades(
   user: User,
@@ -329,13 +361,29 @@ export function subscribeToTrades(
   if (!db || !user?.uid) return null;
 
   const tradesCol = collection(db, 'users', user.uid, 'trades');
+  const deletedCol = collection(db, 'users', user.uid, 'deletedTrades');
+
   return onSnapshot(
     tradesCol,
-    (snapshot) => {
+    async (snapshot) => {
+      // Fetch current tombstones so we never surface a deleted trade
+      let tombstonedIds = new Set<string>();
+      try {
+        const deletedSnap = await getDocs(deletedCol);
+        deletedSnap.forEach((docSnap) => {
+          const data = docSnap.data() as Partial<TradeTombstone>;
+          const id = data?.id || docSnap.id;
+          if (id) tombstonedIds.add(id);
+        });
+      } catch {
+        // If tombstone fetch fails, proceed without it (safe – worst case a
+        // deleted trade flickers back; the next snapshot will correct it).
+      }
+
       const trades: TradeRecord[] = [];
       snapshot.forEach((doc) => {
         const item = doc.data() as TradeRecord;
-        if (item && item.id) {
+        if (item && item.id && !tombstonedIds.has(item.id)) {
           trades.push(item);
         }
       });

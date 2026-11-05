@@ -48,6 +48,10 @@ export default function App() {
     tradesRef.current = trades;
   }, [trades]);
 
+  // Track IDs that are currently being deleted so the real-time snapshot
+  // callback doesn't resurrect them before Firestore removal propagates.
+  const deletingIdsRef = useRef<Set<string>>(new Set());
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => {
@@ -92,10 +96,13 @@ export default function App() {
 
           // Subscribe to ongoing real-time remote updates
           unsubscribeTradesListener = subscribeToTrades(user, (remoteTrades) => {
-            if (remoteTrades && remoteTrades.length > 0) {
-              // Update local store and state if remote trades changed
-              saveTradesToStorage(remoteTrades);
-              setTrades(remoteTrades);
+            // Filter out any trades that are currently being deleted locally
+            // to prevent a resurrection race between local delete and Firestore propagation.
+            const activeDeletingIds = deletingIdsRef.current;
+            const filtered = remoteTrades.filter((t) => !activeDeletingIds.has(t.id));
+            if (Array.isArray(filtered)) {
+              saveTradesToStorage(filtered);
+              setTrades(filtered);
               setLastSyncedAt(new Date());
             }
           });
@@ -161,6 +168,12 @@ export default function App() {
 
   const handleDeleteTrade = async (id: string) => {
     const tradeToDelete = trades.find((t) => t.id === id);
+
+    // Mark as deleting BEFORE any async work so the real-time snapshot
+    // callback filters it out if Firestore fires before the doc is removed.
+    deletingIdsRef.current.add(id);
+
+    // Remove from localStorage and local state immediately
     const updated = await deleteTradeAndAssets(id);
     setTrades(updated);
     if (selectedTrade?.id === id) {
@@ -185,6 +198,12 @@ export default function App() {
         setIsSyncing(false);
       }
     }
+
+    // Clear the deletion guard only after Firestore has confirmed removal
+    // (500 ms buffer for the snapshot listener to settle).
+    setTimeout(() => {
+      deletingIdsRef.current.delete(id);
+    }, 2000);
   };
 
   const handleEditTrade = (trade: TradeRecord) => {
