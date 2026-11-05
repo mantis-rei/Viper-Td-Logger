@@ -586,14 +586,22 @@ export const LogTradeView: React.FC<LogTradeViewProps> = ({
                     <div className="flex items-center justify-between gap-1 mb-1">
                       <span className="text-xs font-bold text-slate-100 flex items-center gap-1.5">
                         <span className={`w-2 h-2 rounded-full ${scenario === 'SETUP_1_VELOCITY' ? 'bg-sky-400' : 'bg-slate-600'}`} />
-                        Setup 1 (Type A): Above 1st Band
+                        Setup 1 (Type A): 1st Band Rejection
                       </span>
                       <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-sky-950 border border-sky-800 text-sky-300">
-                        1:2 RR Target
+                        1:2 RR
                       </span>
                     </div>
                     <p className="text-[11px] text-slate-400 leading-tight">
-                      Price is <strong>above 1st Band</strong>. Trend &gt; 24. Rejection/engulfing closes above EMA 8. SL below breakout candle. <strong>TP: 1:2 RR</strong>.
+                      {direction === 'Long' ? (
+                        <>
+                          Price is <strong>above 1st Band</strong>. Trend &gt; 24. Rejection/engulfing closes above EMA 8. SL below breakout candle. <strong>TP: 1:2 RR</strong>.
+                        </>
+                      ) : (
+                        <>
+                          Price is <strong>below 1st Band</strong>. Trend &gt; 24. Rejection/engulfing closes below EMA 8. SL above breakout candle. <strong>TP: 1:2 RR</strong>.
+                        </>
+                      )}
                     </p>
                   </button>
 
@@ -610,14 +618,22 @@ export const LogTradeView: React.FC<LogTradeViewProps> = ({
                     <div className="flex items-center justify-between gap-1 mb-1">
                       <span className="text-xs font-bold text-slate-100 flex items-center gap-1.5">
                         <span className={`w-2 h-2 rounded-full ${scenario === 'SETUP_2_DEEP_RETEST' ? 'bg-amber-400' : 'bg-slate-600'}`} />
-                        Setup 2 (Type B): Below 1st Band
+                        Setup 2 (Type B): Deep Retest
                       </span>
                       <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-950 border border-amber-800 text-amber-300">
-                        Target: 2nd Band
+                        2nd Band
                       </span>
                     </div>
                     <p className="text-[11px] text-slate-400 leading-tight">
-                      Price is <strong>below 1st Band</strong>. Trend &gt; 24. Deep pullback into ribbon/EMA 22, closes back above EMA 8. SL below breakout candle. <strong>TP: 2nd Band</strong>.
+                      {direction === 'Long' ? (
+                        <>
+                          Price is <strong>below 1st Band</strong>. Trend &gt; 24. Deep pullback into ribbon/EMA 22, closes back above EMA 8. SL below breakout candle. <strong>TP: 2nd Band</strong>.
+                        </>
+                      ) : (
+                        <>
+                          Price is <strong>above 1st Band</strong>. Trend &gt; 24. Deep pullback into ribbon/EMA 22, closes back below EMA 8. SL above breakout candle. <strong>TP: 2nd Band</strong>.
+                        </>
+                      )}
                     </p>
                   </button>
                 </div>
@@ -793,7 +809,10 @@ export const LogTradeView: React.FC<LogTradeViewProps> = ({
                 {scenario === 'SETUP_1_VELOCITY' && (
                   <div className="p-2 rounded-lg bg-sky-950/30 border border-sky-800/40 text-[11px] text-sky-300 flex items-center justify-between">
                     <span>
-                      <strong>Setup 1 Rules:</strong> Price above 1st Band · Rejection &gt; EMA 8 · SL below breakout
+                      <strong>Setup 1 Rules:</strong>{' '}
+                      {direction === 'Long'
+                        ? 'Price above 1st Band · Rejection > EMA 8 · SL below breakout'
+                        : 'Price below 1st Band · Rejection < EMA 8 · SL above breakout'}
                     </span>
                     <span className="font-mono font-bold text-sky-200 px-1.5 py-0.5 bg-sky-900/60 rounded">
                       TP: 1:2 RR
@@ -804,7 +823,10 @@ export const LogTradeView: React.FC<LogTradeViewProps> = ({
                 {scenario === 'SETUP_2_DEEP_RETEST' && (
                   <div className="p-2 rounded-lg bg-amber-950/30 border border-amber-800/40 text-[11px] text-amber-300 flex items-center justify-between">
                     <span>
-                      <strong>Setup 2 Rules:</strong> Price below 1st Band · Deep Retest to EMA 22 &gt; EMA 8 · SL below breakout
+                      <strong>Setup 2 Rules:</strong>{' '}
+                      {direction === 'Long'
+                        ? 'Price below 1st Band · Deep Retest to EMA 22 > EMA 8 · SL below breakout'
+                        : 'Price above 1st Band · Deep Retest to EMA 22 < EMA 8 · SL above breakout'}
                     </span>
                     <span className="font-mono font-bold text-amber-200 px-1.5 py-0.5 bg-amber-900/60 rounded">
                       TP: 2nd Band
@@ -861,7 +883,7 @@ export const LogTradeView: React.FC<LogTradeViewProps> = ({
 
               {/* Gate items list */}
               <div className="space-y-2 pt-1">
-                {getGatesForScenario(scenario).map((gate) => {
+                {getGatesForScenario(scenario, direction).map((gate) => {
                   const passed = gates[gate.id];
                   const isSessionGate = gate.id === 'session';
 
@@ -998,7 +1020,7 @@ export const LogTradeView: React.FC<LogTradeViewProps> = ({
                       Stop Loss Price
                     </label>
                     <span className="text-[10px] text-slate-500 font-mono">
-                      Below breakout
+                      {direction === 'Long' ? 'Below breakout' : 'Above breakout'}
                     </span>
                   </div>
                   <input
