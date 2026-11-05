@@ -213,16 +213,27 @@ export async function deleteTradeFromCloud(
   if (!db || !user?.uid) return;
 
   try {
-    // Write tombstone first to prevent resurrection by sync/merge
-    const tombstoneRef = doc(db, 'users', user.uid, 'deletedTrades', tradeId);
-    await setDoc(
-      tombstoneRef,
-      {
-        id: tradeId,
-        deletedAt: Date.now(),
-      },
-      { merge: true }
-    );
+    // Write the tombstone first when the rules allow it. If the collection is
+    // not yet covered by Firestore rules, still continue with the actual trade
+    // deletion so the record does not remain remotely visible.
+    let tombstoneWritten = false;
+    try {
+      const tombstoneRef = doc(db, 'users', user.uid, 'deletedTrades', tradeId);
+      await setDoc(
+        tombstoneRef,
+        {
+          id: tradeId,
+          deletedAt: Date.now(),
+        },
+        { merge: true }
+      );
+      tombstoneWritten = true;
+    } catch (err) {
+      console.warn(
+        `Could not write deletion tombstone for ${tradeId}. Check Firestore rules for deletedTrades.`,
+        err
+      );
+    }
 
     const tradeRef = doc(db, 'users', user.uid, 'trades', tradeId);
     await deleteDoc(tradeRef);
@@ -232,6 +243,12 @@ export async function deleteTradeFromCloud(
     }
     if (exitImageId) {
       await deleteScreenshotFromCloud(user.uid, exitImageId);
+    }
+
+    if (!tombstoneWritten) {
+      console.warn(
+        `Trade ${tradeId} was deleted, but its tombstone was not saved. Add users/{uid}/deletedTrades/{tradeId} permissions to prevent cross-device resurrection.`
+      );
     }
   } catch (err) {
     console.error(`Failed deleting trade ${tradeId} from cloud`, err);
@@ -256,19 +273,29 @@ export async function performFullSync(
     return localTrades;
   }
 
-  // 1. Fetch remote trades and deletion tombstones
+  // 1. Fetch remote trades and deletion tombstones. Tombstones are a
+  // protection layer, but a missing deletedTrades rule should not prevent
+  // ordinary trade reads from completing.
   const tradesCol = collection(db, 'users', user.uid, 'trades');
   const deletedCol = collection(db, 'users', user.uid, 'deletedTrades');
-  const [querySnap, deletedSnap] = await Promise.all([getDocs(tradesCol), getDocs(deletedCol)]);
+  const querySnap = await getDocs(tradesCol);
 
   const tombstonedIds = new Set<string>();
-  deletedSnap.forEach((docSnap) => {
-    const data = docSnap.data() as Partial<TradeTombstone>;
-    const id = data?.id || docSnap.id;
-    if (id) {
-      tombstonedIds.add(id);
-    }
-  });
+  try {
+    const deletedSnap = await getDocs(deletedCol);
+    deletedSnap.forEach((docSnap) => {
+      const data = docSnap.data() as Partial<TradeTombstone>;
+      const id = data?.id || docSnap.id;
+      if (id) {
+        tombstonedIds.add(id);
+      }
+    });
+  } catch (err) {
+    console.warn(
+      'Could not read deletedTrades tombstones. Add Firestore rules for that subcollection to prevent cross-device resurrection.',
+      err
+    );
+  }
 
   const remoteTradesMap = new Map<string, TradeRecord>();
   querySnap.forEach((docSnap) => {

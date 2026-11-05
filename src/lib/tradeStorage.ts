@@ -22,6 +22,15 @@ export function loadTradesFromStorage(): TradeRecord[] {
   }
 }
 
+export function hasStoredTrades(): boolean {
+  try {
+    return localStorage.getItem(TRADES_STORAGE_KEY) !== null;
+  } catch (err) {
+    console.error('Failed checking trade storage', err);
+    return false;
+  }
+}
+
 export function saveTradesToStorage(trades: TradeRecord[]): void {
   try {
     localStorage.setItem(TRADES_STORAGE_KEY, JSON.stringify(trades));

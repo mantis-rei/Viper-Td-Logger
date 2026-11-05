@@ -20,6 +20,7 @@ import { onAuthChange, signOutUser } from './lib/firebase';
 import {
   deleteTradeAndAssets,
   getSampleTrades,
+  hasStoredTrades,
   loadTradesFromStorage,
   saveTradesToStorage,
 } from './lib/tradeStorage';
@@ -62,7 +63,7 @@ export default function App() {
   // 1. Initialize trades from localStorage or seed with realistic demo trades on first visit
   useEffect(() => {
     const existing = loadTradesFromStorage();
-    if (existing.length > 0) {
+    if (existing.length > 0 || hasStoredTrades()) {
       setTrades(existing);
     } else {
       const samples = getSampleTrades();
