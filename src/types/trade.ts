@@ -44,7 +44,7 @@ export const SETUP_1_GATES: GateInfo[] = [
     number: 2,
     name: 'Location: Above 1st Band',
     shortDesc: 'Price trading above 1st Band',
-    fullDesc: 'Price is established above the 1st Volatility Band (for Long) in the active expansion corridor.',
+    fullDesc: 'Price is established above the 1st Volatility Band in the active expansion corridor.',
     hint: 'Confirms price is holding value above the 1st band.'
   },
   {
@@ -95,7 +95,7 @@ export const SETUP_2_GATES: GateInfo[] = [
     number: 2,
     name: 'Location: Below 1st Band (Deep Pullback)',
     shortDesc: 'Price is below 1st Band with deep pullback',
-    fullDesc: 'Price is below the 1st Band (for Long) and has pulled back deeply into the ribbon / RED line (EMA 22) or key 4H Gap.',
+    fullDesc: 'Price is below the 1st Band and has pulled back deeply into the ribbon / RED line (EMA 22) or key 4H Gap.',
     hint: 'Deep retest sweeps weak hands before expansion.'
   },
   {
